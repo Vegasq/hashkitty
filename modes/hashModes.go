@@ -1,10 +1,12 @@
-package main
+package modes
 
 import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
+	"github.com/GerardSoleCa/wordpress-hash-go"
+	"github.com/matthewhartstonge/argon2"
 	"golang.org/x/crypto/bcrypt"
 	"io"
 )
@@ -23,8 +25,10 @@ var HASHMODES = map[string]func(string, string, string) bool{
 	"MD5SALTPLAIN":             MD5SALTPLAIN,
 	"OSCOMMERCE":               MD5SALTPLAIN,
 	"JOOMLA":                   MD5PLAINSALT,
+	"WORDPRESS":                WORDPRESS,
 
 	"BCRYPT": BCRYPT,
+	"ARGON2": ARGON2,
 
 	"SHA1":            SHA1,
 	"SHA1PLAIN":       SHA1,
@@ -36,7 +40,16 @@ var HASHMODES = map[string]func(string, string, string) bool{
 	"SHA256(PLAINSALT)": SHA256PLAINSALT,
 }
 
-func SHA1(hash, plain, salt string) bool {
+func ARGON2(hash, plain, _ string) bool {
+	ok, _ := argon2.VerifyEncoded([]byte(plain), []byte(hash))
+	return ok
+}
+
+func WORDPRESS(hash, plain, _ string) bool {
+	return wphash.CheckPassword(plain, hash)
+}
+
+func SHA1(hash, plain, _ string) bool {
 	h := sha1.New()
 	io.WriteString(h, fmt.Sprintf("%s", plain))
 	return hash == fmt.Sprintf("%x", h.Sum(nil))
@@ -54,11 +67,11 @@ func SHA1SALTPLAIN(hash, plain, salt string) bool {
 	return hash == fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func BCRYPT(hash, plain, salt string) bool {
+func BCRYPT(hash, plain, _ string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 
-func MD5(h, plain, salt string) bool {
+func MD5(h, plain, _ string) bool {
 	plainHash := md5.New()
 	io.WriteString(plainHash, plain)
 	return h == fmt.Sprintf("%x", plainHash.Sum(nil))

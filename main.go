@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
+	"hashkitty/modes"
 	"log"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ func getArchives() []string {
 
 func parseBrokenBcrypt(rightPartLine string) (string, string) {
 	hash := rightPartLine[0:60]
-	plain := rightPartLine[60 : len(rightPartLine)]
+	var plain = rightPartLine[60:]
 	return hash, plain
 }
 
@@ -66,7 +67,7 @@ func decodeHashcatHexPlain(hexPlain string) string {
 }
 
 func validate(hashType, hash, plain, salt string) bool {
-	validator := HASHMODES[hashType]
+	validator := modes.HASHMODES[hashType]
 	if validator != nil {
 		return validator(hash, plain, salt)
 	}
@@ -122,28 +123,6 @@ func parseLine(line string) {
 
 }
 
-func sneakPeek(f *zip.File) bool {
-	flReader, err := f.Open()
-	defer flReader.Close()
-
-	if err != nil {
-		fmt.Println("Failed to open file from archive", f)
-	}
-
-	doubleCols := 0
-	scanner2 := bufio.NewScanner(flReader)
-	for i := 0; i < 1000; i++ {
-		scanner2.Scan()
-		line := scanner2.Text()
-		fmt.Println(line)
-		if strings.Contains(line, "::") {
-			doubleCols += 1
-		}
-	}
-
-	return doubleCols > 500
-}
-
 func readFile(f *zip.File) {
 	flReader, err := f.Open()
 
@@ -161,7 +140,10 @@ func readFile(f *zip.File) {
 		log.Fatal(err)
 	}
 
-	flReader.Close()
+	err = flReader.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func readArchive(path string) {
@@ -170,7 +152,12 @@ func readArchive(path string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Close()
+	defer func(r *zip.ReadCloser) {
+		err := r.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(r)
 
 	for _, f := range r.File {
 		readFile(f)
