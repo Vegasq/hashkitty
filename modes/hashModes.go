@@ -11,6 +11,19 @@ import (
 	"io"
 )
 
+var HASHCATMODES = map[uint]func(string, string, string) bool{
+	0:    MD5,
+	10:   MD5PLAINSALT,
+	11:   MD5PLAINSALT,
+	20:   MD5SALTPLAIN,
+	100:  SHA1,
+	400:  WORDPRESS,
+	2611: VBULLETIN,
+	2711: VBULLETIN,
+	2811: MYBB,
+	3200: BCRYPT,
+}
+
 var HASHMODES = map[string]func(string, string, string) bool{
 	"IPB":                      IPB,
 	"MD5(MD5(SALT)MD5(PLAIN))": IPB,
@@ -96,6 +109,7 @@ func SHA256PLAINSALT(h, plain, salt string) bool {
 }
 
 func IPB(h, plain, salt string) bool {
+	// md5(md5($salt).md5($pass))
 	saltHash := md5.New()
 	io.WriteString(saltHash, salt)
 
@@ -110,6 +124,7 @@ func IPB(h, plain, salt string) bool {
 }
 
 func VBULLETIN(h, plain, salt string) bool {
+	// md5(md5($pass).$salt)
 	hash := md5.New()
 	io.WriteString(hash, plain)
 	plainHash := fmt.Sprintf("%x", hash.Sum(nil))
@@ -122,6 +137,9 @@ func VBULLETIN(h, plain, salt string) bool {
 }
 
 func MYBB(h, plain, salt string) bool {
+	// Can't find such algo in hashcat?
+	// md5(md5($salt).$pass)
+
 	hash := md5.New()
 	io.WriteString(hash, salt)
 	saltHash := fmt.Sprintf("%x", hash.Sum(nil))
