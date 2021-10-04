@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"bufio"
-	"context"
 	"encoding/hex"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,10 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-)
-import (
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Record struct {
@@ -190,64 +185,6 @@ func recordsReader(ch *chan Record, mh *MongoHolder) {
 			batch = []Record{}
 		}
 	}
-}
-
-type MongoHolder struct {
-	Client     *mongo.Client
-	Context    *context.Context
-	HDB        *mongo.Collection
-	PROCESSEDB *mongo.Collection
-}
-
-func (mh *MongoHolder) Close() {
-	mh.Client.Disconnect(*mh.Context)
-	ctx := *mh.Context
-	ctx.Done()
-}
-
-func (mh *MongoHolder) Insert(recs []Record) {
-	fmt.Println("Inserting")
-	start := time.Now()
-
-	inserts := []interface{}{}
-	for i := 0; i < len(recs); i++ {
-		inserts = append(inserts, recs[i])
-	}
-
-	_, err := mh.HDB.InsertMany(*mh.Context, inserts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	end := time.Now()
-
-	took := end.Sub(start)
-
-	fmt.Printf("insert took %f sec\n", took.Seconds())
-
-	//fmt.Println("Inserted multiple documents: ", insertManyResult.InsertedIDs)
-}
-
-func NewMongoHolder() *MongoHolder {
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
-	mh := MongoHolder{}
-	data, err := os.ReadFile("connect.uri")
-	if err != nil {
-		panic("Failed to read connection uri")
-	}
-
-	ctx := context.Background()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(string(data)))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	mh.Client = client
-	mh.Context = &ctx
-	mh.HDB = mh.Client.Database("hashesdb").Collection("hashes")
-	mh.PROCESSEDB = mh.Client.Database("hashesdb").Collection("processed")
-
-	return &mh
 }
 
 type Processed struct {
