@@ -31,9 +31,13 @@ type Record struct {
 }
 
 func getArchives() []string {
-	hdoLocation := "E:\\HashesOrg Archive\\Leaks"
+	hdoLocation, err := os.ReadFile("archives.location")
+	if err != nil {
+		panic("Failed to read connection uri")
+	}
+
 	var files []string
-	err := filepath.Walk(hdoLocation, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(string(hdoLocation), func(path string, info os.FileInfo, err error) error {
 		if strings.Contains(path, ".zip") {
 			files = append(files, path)
 		}
