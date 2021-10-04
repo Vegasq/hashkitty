@@ -3,13 +3,20 @@ package main
 import (
 	"archive/zip"
 	"bufio"
+	"context"
 	"encoding/hex"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"hashkitty/modes"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+)
+import (
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Record struct {
@@ -17,6 +24,10 @@ type Record struct {
 	Salt     string
 	Plain    string
 	HashType string
+	RAW      string
+
+	Origin    string
+	AddedDate time.Time
 }
 
 func getArchives() []string {
@@ -74,7 +85,7 @@ func validate(hashType, hash, plain, salt string) bool {
 	return false
 }
 
-func parseLine(line string) {
+func parseLine(ch *chan Record, line string, path string) {
 	r := Record{}
 	values := strings.SplitN(line, " ", 2)
 	if len(values) != 2 {
@@ -82,10 +93,6 @@ func parseLine(line string) {
 		return
 	}
 	r.HashType = values[0]
-
-	if r.HashType != "BCRYPT" {
-		return
-	}
 
 	hashCont, leftovers := readHash(values[1])
 
@@ -105,25 +112,29 @@ func parseLine(line string) {
 	plainCont = decodeHashcatHexPlain(plainCont)
 
 	// Validate hash/salt/plain/mode + temp fix for double cols
-	isValid := validate(r.HashType, hashCont, plainCont, saltCont)
-	if isValid == false && len(saltCont) > 0 {
-		isValid = validate(r.HashType, hashCont, plainCont, saltCont[0:len(saltCont)-1])
-		if isValid {
-			saltCont = saltCont[0 : len(saltCont)-1]
-		}
-	}
-
-	if isValid == false {
-		fmt.Println(r.HashType, "h", hashCont, "s", saltCont, "p", plainCont, "l", line)
-	}
+	//isValid := validate(r.HashType, hashCont, plainCont, saltCont)
+	//if isValid == false && len(saltCont) > 0 {
+	//	isValid = validate(r.HashType, hashCont, plainCont, saltCont[0:len(saltCont)-1])
+	//	if isValid {
+	//		saltCont = saltCont[0 : len(saltCont)-1]
+	//	}
+	//}
+	//
+	//if isValid == false {
+	//	fmt.Println(r.HashType, "h", hashCont, "s", saltCont, "p", plainCont, "l", line)
+	//}
 
 	r.Hash = hashCont
 	r.Plain = plainCont
 	r.Salt = saltCont
+	r.RAW = line
 
+	r.Origin = path
+	r.AddedDate = time.Now().UTC()
+	*ch <- r
 }
 
-func readFile(f *zip.File) {
+func readFile(ch *chan Record, f *zip.File, path string) {
 	flReader, err := f.Open()
 
 	if err != nil {
@@ -133,7 +144,7 @@ func readFile(f *zip.File) {
 	fmt.Printf("Contents of %s:\n", f.Name)
 	scanner := bufio.NewScanner(flReader)
 	for scanner.Scan() {
-		parseLine(scanner.Text())
+		parseLine(ch, scanner.Text(), path)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -146,8 +157,7 @@ func readFile(f *zip.File) {
 	}
 }
 
-func readArchive(path string) {
-	// Open a zip archive for reading.
+func readArchive(ch *chan Record, path string) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		log.Fatal(err)
@@ -160,24 +170,104 @@ func readArchive(path string) {
 	}(r)
 
 	for _, f := range r.File {
-		readFile(f)
+		readFile(ch, f, path)
 	}
 }
 
+func recordsReader(ch *chan Record, mh *MongoHolder) {
+	var rec Record
+	var batch []Record
+	for {
+		rec = <-*ch
+		batch = append(batch, rec)
+		if len(batch) >= 999_000 {
+			mh.Insert(batch)
+			//recordsWriter(mh, batch)
+			batch = []Record{}
+		}
+	}
+}
+
+type MongoHolder struct {
+	Client     *mongo.Client
+	Context    *context.Context
+	HDB        *mongo.Collection
+	PROCESSEDB *mongo.Collection
+}
+
+func (mh *MongoHolder) Close() {
+	mh.Client.Disconnect(*mh.Context)
+	ctx := *mh.Context
+	ctx.Done()
+}
+
+func (mh *MongoHolder) Insert(recs []Record) {
+	fmt.Println("Inserting")
+	start := time.Now()
+
+	inserts := []interface{}{}
+	for i := 0; i < len(recs); i++ {
+		inserts = append(inserts, recs[i])
+	}
+
+	_, err := mh.HDB.InsertMany(*mh.Context, inserts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	end := time.Now()
+
+	took := end.Sub(start)
+
+	fmt.Printf("insert took %f sec\n", took.Seconds())
+
+	//fmt.Println("Inserted multiple documents: ", insertManyResult.InsertedIDs)
+}
+
+func NewMongoHolder() *MongoHolder {
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+	mh := MongoHolder{}
+	data, err := os.ReadFile("connect.uri")
+	if err != nil {
+		panic("Failed to read connection uri")
+	}
+
+	ctx := context.Background()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(string(data)))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	mh.Client = client
+	mh.Context = &ctx
+	mh.HDB = mh.Client.Database("hashesdb").Collection("hashes")
+	mh.PROCESSEDB = mh.Client.Database("hashesdb").Collection("processed")
+
+	return &mh
+}
+
+type Processed struct {
+	Path string
+}
+
 func main() {
-	//a, b := parseBrokenBcrypt("$2y$07$aa00x37f5mgo8krilsvhuebesmextTV6633fYMGFLrjBtuQkE4AWCphilips")
-	//fmt.Println(a, b)
-	//return
+	records := make(chan Record)
+	mh := NewMongoHolder()
+	go recordsReader(&records, mh)
 	files := getArchives()
 	for i := 0; i < len(files); i++ {
-		if i < 5 {
-			continue
+		cur, err := mh.PROCESSEDB.Find(*mh.Context, bson.M{"path": files[i]})
+		if err != nil {
+			fmt.Println(err)
 		}
-		fmt.Println(files[i], "\n-----\n")
-		readArchive(files[i])
-
-		if i == 100 {
-			return
+		exist := cur.Next(*mh.Context)
+		if exist == false {
+			fmt.Println(files[i])
+			readArchive(&records, files[i])
+			mh.PROCESSEDB.InsertOne(*mh.Context, Processed{files[i]})
+		} else {
+			fmt.Println("SKIP", files[i])
+			//return
 		}
 	}
 }
