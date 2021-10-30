@@ -1,0 +1,46 @@
+name: Functional Tests
+
+on:
+  push:
+    branches: [ "*" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Build
+        run: go build -v
+
+      - name: Execute mode 0 no rules
+        run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --potfile-path /tmp/potfile_0.txt
+
+      - name: Execute mode 0 with rules
+        run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --rules-file test_data/ruleset.txt --potfile-path /tmp/potfile_0r.txt
+
+      - name: Execute mode 9 no rules
+        run: ./hashkitty -a 9 -m 0 test_data/leftlist.txt test_data/wordlist_9.txt --potfile-path /tmp/potfile_9.txt
+
+      - name: Presort potfiles
+        run: sort -o /tmp/potfile_0.txt /tmp/potfile_0.txt &&
+             sort -o /tmp/potfile_0r.txt /tmp/potfile_0r.txt &&
+             sort -o /tmp/potfile_9.txt /tmp/potfile_9.txt &&
+             sort -o test_data/potfile_0.txt test_data/potfile_0.txt &&
+             sort -o test_data/potfile_0r.txt test_data/potfile_0r.txt &&
+             sort -o test_data/potfile_9.txt test_data/potfile_9.txt
+
+      - name: Verify mode 9 no rules
+        run: cmp /tmp/potfile_9.txt test_data/potfile_9.txt
+
+      - name: Verify mode 0 no rules
+        run: cmp /tmp/potfile_0.txt test_data/potfile_0.txt
+
+      - name: Verify mode 0 with rules
+        run: cmp /tmp/potfile_0r.txt test_data/potfile_0r.txt

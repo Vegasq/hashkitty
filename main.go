@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hellflame/argparse"
 	"hashkitty/algos"
 	_ "hashkitty/rules"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -20,8 +22,9 @@ type Settings struct {
 	attackMode *int
 	hashType   *int
 
-	tasks   *chan Task
-	results *chan Task
+	tasks         *chan Task
+	results       *chan Task
+	potfileCloser *chan bool
 
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
@@ -61,7 +64,8 @@ func NewSettings() *Settings {
 	})
 
 	potfile := parser.String("p", "potfile-path", &argparse.Option{
-		Help: "Potfile location",
+		Help:    "Potfile location",
+		Default: "potfile.txt",
 	})
 
 	attackMode := parser.Int("a", "attack-mode", &argparse.Option{
@@ -78,11 +82,22 @@ func NewSettings() *Settings {
 		// This can also be done by passing -h or --help flags
 		parser.PrintHelp()
 	}
+
+	if _, err := os.Stat(*potfile); errors.Is(err, os.ErrNotExist) {
+		os.MkdirAll(filepath.Dir(*potfile), 0660)
+		fl, err := os.Create(*potfile)
+		if err != nil {
+			panic(err)
+		}
+		fl.Close()
+	}
+
 	progress := sync.WaitGroup{}
 	writes := sync.WaitGroup{}
 	tasksChan := make(chan Task)
 	goodTasksChan := make(chan Task)
-	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &progress, &writes}
+	potfileCloser := make(chan bool)
+	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &potfileCloser, &progress, &writes}
 }
 
 type Task struct {
@@ -116,16 +131,26 @@ func PotfileWriter(settings *Settings) {
 	if err != nil {
 		panic(err)
 	}
-	defer potfile.Close()
 	for {
-		task := <-*settings.results
-		//fmt.Println(task.word, task.hash)
-		_, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
-		settings.writes.Done()
-		if err != nil {
-			panic(err)
+		select {
+		case task := <-*settings.results:
+			_, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
+			settings.writes.Done()
+			if err != nil {
+				panic(err)
+			}
+		case <-*settings.potfileCloser:
+			if err := potfile.Close(); err != nil {
+				fmt.Printf("Failed to close potfile: %e\n", err)
+			}
+			*settings.potfileCloser <- true
 		}
 	}
+}
+func PotfileCloser(settings *Settings) {
+	*settings.potfileCloser <- true
+	<-*settings.potfileCloser
+	fmt.Printf("Potfile %s\n", *settings.potfile)
 }
 
 func spawnWorkers(settings *Settings) {
@@ -157,4 +182,5 @@ func main() {
 
 	settings.progress.Wait()
 	settings.writes.Wait()
+	PotfileCloser(settings)
 }

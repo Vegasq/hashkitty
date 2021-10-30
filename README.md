@@ -1,6 +1,7 @@
 # HashKitty
 
-![Tests](https://github.com/vegasq/hashkitty/actions/workflows/go.yml/badge.svg?branch=master)
+![Unit Tests](https://github.com/vegasq/hashkitty/actions/workflows/unit.yml/badge.svg?branch=master)
+![Functional Tests](https://github.com/vegasq/hashkitty/actions/workflows/functional.yml/badge.svg?branch=master)
 
 Reimplementation of _some_ of the HashCat (https://github.com/hashcat/hashcat) features in GO.
 
