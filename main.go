@@ -1,16 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/hellflame/argparse"
 	"hashkitty/algos"
 	_ "hashkitty/rules"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 )
@@ -88,112 +85,6 @@ func NewSettings() *Settings {
 	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &progress, &writes}
 }
 
-type Leftlist struct {
-	name *string
-	fl   *os.File
-
-	// attack mode 9
-	reader *bufio.Reader
-}
-
-type LeftlistRecord struct {
-	hash string
-	salt string
-}
-
-func (l *Leftlist) GetNextRecord() (LeftlistRecord, error) {
-	if l.reader == nil {
-		l.reader = bufio.NewReader(l.fl)
-	}
-
-	var hash, eof = l.reader.ReadString('\n')
-	if len(hash) > 0 {
-		hash = strings.TrimRight(hash, "\r\n")
-		dividedHash := strings.SplitN(hash, ":", 2)
-		if len(dividedHash) == 2 {
-			return LeftlistRecord{dividedHash[0], dividedHash[1]}, nil
-		}
-		return LeftlistRecord{hash, ""}, nil
-	}
-	return LeftlistRecord{}, eof
-}
-
-func NewLeftlist(settings *Settings) *Leftlist {
-	//fmt.Println("leftlist", *settings.leftlist)
-	fl, err := os.Open(*settings.leftlist)
-	if err != nil {
-		panic("Failed to open leftlist")
-	}
-	return &Leftlist{settings.leftlist, fl, nil}
-}
-
-type Ruleset struct {
-	name *string
-	fl   *os.File
-
-	// attack mode 9
-	reader *bufio.Reader
-}
-
-func (r *Ruleset) Reset() {
-	r.fl.Seek(0, 0)
-}
-func (r *Ruleset) GetNextRule() (string, error) {
-	if r.reader == nil {
-		r.reader = bufio.NewReader(r.fl)
-	}
-
-	var rule, err = r.reader.ReadString('\n')
-	if err != nil {
-		return "", errors.New("failed to read a rule")
-	}
-	rule = strings.TrimRight(rule, "\r\n")
-
-	return rule, nil
-}
-
-func NewRuleset(settings *Settings) *Ruleset {
-	if len(*settings.rules) > 0 {
-		fl, err := os.Open(*settings.rules)
-		if err != nil {
-			panic("Failed to open ruleset")
-		}
-		return &Ruleset{settings.rules, fl, nil}
-	}
-	return &Ruleset{nil, nil, nil}
-}
-
-type Wordlist struct {
-	name *string
-	fl   *os.File
-
-	// attack mode 9
-	reader *bufio.Reader
-}
-
-func (w *Wordlist) GetNextLine() (string, error) {
-	if w.reader == nil {
-		w.reader = bufio.NewReader(w.fl)
-	}
-
-	var word, err = w.reader.ReadString('\n')
-	word = strings.TrimRight(word, "\r\n")
-	if err != nil {
-		return "", errors.New("failed to read a word")
-	}
-
-	return word, nil
-}
-
-func NewWordlist(settings *Settings) *Wordlist {
-	//fmt.Println("wordlist", *settings.wordlist)
-	fl, err := os.Open(*settings.wordlist)
-	if err != nil {
-		panic("Failed to open wordlist")
-	}
-	return &Wordlist{settings.wordlist, fl, nil}
-}
-
 type Task struct {
 	hash string
 	salt string
@@ -229,29 +120,32 @@ func PotfileWriter(settings *Settings) {
 	for {
 		task := <-*settings.results
 		//fmt.Println(task.word, task.hash)
-		n, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
+		_, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
 		settings.writes.Done()
 		if err != nil {
-			fmt.Println(n)
 			panic(err)
 		}
 	}
 }
 
-func main() {
-	settings := NewSettings()
+func spawnWorkers(settings *Settings) {
 	for i := runtime.NumCPU() * 10; i != 0; i-- {
 		go Worker(settings)
 	}
+}
 
+func main() {
+	settings := NewSettings()
+
+	spawnWorkers(settings)
 	go PotfileWriter(settings)
 
 	leftlist := NewLeftlist(settings)
-	defer leftlist.fl.Close()
+	defer leftlist.Close()
 	wordlist := NewWordlist(settings)
-	defer wordlist.fl.Close()
+	defer wordlist.Close()
 	ruleset := NewRuleset(settings)
-	defer ruleset.fl.Close()
+	defer ruleset.Close()
 
 	if *settings.attackMode == 0 {
 		fmt.Println("Start attack mode 0")

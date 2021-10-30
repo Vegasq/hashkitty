@@ -1,23 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"hashkitty/rules"
-	"strings"
 )
 
 func combineWordWithRules(settings *Settings, ruleset *Ruleset, word string, hash LeftlistRecord) {
-	rsReader := bufio.NewReader(ruleset.fl)
-	ruleset.fl.Seek(0, 0)
+	ruleset.Reset()
 	for {
-		var rule, err = rsReader.ReadString('\n')
+		var rule, err = ruleset.GetNextRule()
 
 		if len(rule) > 0 {
-			//fmt.Println("Process rule", rule)
-			rule = strings.Replace(rule, "\n", "", 1)
-			rule = strings.Replace(rule, "\r", "", 1)
 			processedWord := rules.Apply(rule, word)
-
 			sendTask(settings, hash, processedWord)
 		}
 
@@ -28,12 +21,9 @@ func combineWordWithRules(settings *Settings, ruleset *Ruleset, word string, has
 }
 
 func combineHashWithWords(settings *Settings, hash LeftlistRecord, wordlist *Wordlist, ruleset *Ruleset) {
-	wlReader := bufio.NewReader(wordlist.fl)
-	wordlist.fl.Seek(0, 0)
+	wordlist.Reset()
 	for {
-		var word, err = wlReader.ReadString('\n')
-		word = strings.Replace(word, "\n", "", -1)
-		word = strings.Replace(word, "\r", "", -1)
+		word, eof := wordlist.GetNextLine()
 
 		if len(word) > 0 {
 			if ruleset.name != nil {
@@ -43,7 +33,7 @@ func combineHashWithWords(settings *Settings, hash LeftlistRecord, wordlist *Wor
 			}
 		}
 
-		if err != nil {
+		if eof != nil {
 			break
 		}
 	}
@@ -51,11 +41,13 @@ func combineHashWithWords(settings *Settings, hash LeftlistRecord, wordlist *Wor
 
 func readLeftlist(settings *Settings, leftlist *Leftlist, wordlist *Wordlist, ruleset *Ruleset) {
 	for {
-		hash, err := leftlist.GetNextRecord()
-		if err != nil {
+		hash, eof := leftlist.GetNextRecord()
+		if len(hash.hash) > 0 {
+			combineHashWithWords(settings, hash, wordlist, ruleset)
+		}
+		if eof != nil {
 			return
 		}
-		combineHashWithWords(settings, hash, wordlist, ruleset)
 	}
 }
 
