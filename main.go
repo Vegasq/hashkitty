@@ -150,6 +150,7 @@ func PotfileWriter(settings *Settings) {
 func PotfileCloser(settings *Settings) {
 	*settings.potfileCloser <- true
 	<-*settings.potfileCloser
+	fmt.Printf("Potfile %s\n", *settings.potfile)
 }
 
 func spawnWorkers(settings *Settings) {
