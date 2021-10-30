@@ -2,7 +2,7 @@ name: Functional Tests
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "*" ]
 
@@ -30,11 +30,19 @@ jobs:
       - name: Execute mode 9 no rules
         run: ./hashkitty -a 9 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --potfile-path potfile_9.txt
 
+      - name: Preseor potfiles
+        run: sort -o potfile_0.txt potfile_0.txt &&
+             sort -o potfile_0r.txt potfile_0r.txt &&
+             sort -o potfile_9.txt potfile_9.txt &&
+             sort -o test_data/potfile_0.txt test_data/potfile_0.txt &&
+             sort -o test_data/potfile_0r.txt test_data/potfile_0r.txt &&
+             sort -o test_data/potfile_9.txt test_data/potfile_9.txt
+
+      - name: Verify mode 9 no rules
+        run: cmp potfile_9.txt test_data/potfile_9.txt
+
       - name: Verify mode 0 no rules
         run: cmp potfile_0.txt test_data/potfile_0.txt
 
       - name: Verify mode 0 with rules
         run: cmp potfile_0.txt test_data/potfile_0.txt
-
-      - name: Verify mode 9 no rules
-        run: cmp potfile_9.txt test_data/potfile_9.txt
