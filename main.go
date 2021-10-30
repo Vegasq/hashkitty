@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/hellflame/argparse"
 	"hashkitty/algos"
-	_ "hashkitty/rules"
 	"log"
 	"os"
 	"path/filepath"
