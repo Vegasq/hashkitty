@@ -140,7 +140,9 @@ func PotfileWriter(settings *Settings) {
 				panic(err)
 			}
 		case <-*settings.potfileCloser:
-			potfile.Close()
+			if err := potfile.Close(); err != nil {
+				fmt.Printf("Failed to close potfile: %e\n", err)
+			}
 			*settings.potfileCloser <- true
 		}
 	}
