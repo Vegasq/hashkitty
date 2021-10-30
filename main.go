@@ -7,6 +7,7 @@ import (
 	"github.com/hellflame/argparse"
 	"hashkitty/algos"
 	_ "hashkitty/rules"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -114,12 +115,12 @@ func Worker(settings *Settings) {
 	for {
 		select {
 		case task := <-*settings.tasks:
-			settings.progress.Done()
 			if validator(task.hash, task.word, task.salt) {
-				fmt.Printf("OK %s %s\n", task.hash, task.word)
+				log.Printf("OK %s %s\n", task.hash, task.word)
 				settings.writes.Add(1)
 				*settings.results <- task
 			}
+			settings.progress.Done()
 		case <-ctx.Done():
 			return
 		}
@@ -141,7 +142,7 @@ func PotfileWriter(settings *Settings) {
 			}
 		case <-*settings.potfileCloser:
 			if err := potfile.Close(); err != nil {
-				fmt.Printf("Failed to close potfile: %e\n", err)
+				log.Printf("Failed to close potfile: %e\n", err)
 			}
 			*settings.potfileCloser <- true
 		}
@@ -150,7 +151,7 @@ func PotfileWriter(settings *Settings) {
 func PotfileCloser(settings *Settings) {
 	*settings.potfileCloser <- true
 	<-*settings.potfileCloser
-	fmt.Printf("Potfile %s\n", *settings.potfile)
+	log.Printf("Potfile %s\n", *settings.potfile)
 }
 
 func spawnWorkers(settings *Settings) {
@@ -172,11 +173,10 @@ func main() {
 	ruleset := NewRuleset(settings)
 	defer ruleset.Close()
 
+	log.Printf("Start attack mode %d\n", *settings.attackMode)
 	if *settings.attackMode == 0 {
-		fmt.Println("Start attack mode 0")
 		mode0(settings, leftlist, wordlist, ruleset)
 	} else if *settings.attackMode == 9 {
-		fmt.Println("Start attack mode 9")
 		mode9(settings, leftlist, wordlist, ruleset)
 	}
 

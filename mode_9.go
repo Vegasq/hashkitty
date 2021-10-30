@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"hashkitty/rules"
+	"log"
 )
 
 func sendTask(settings *Settings, hash LeftlistRecord, word string) {
 	settings.progress.Add(1)
-	fmt.Println("sending task " + hash.hash + " " + hash.salt + " " + word)
-	//# -r D:\Projects\hashkitty\rules.txt
+	log.Println("CHECK " + hash.hash + " " + hash.salt + " " + word)
+
 	*(settings.tasks) <- Task{
 		hash: hash.hash,
 		salt: hash.salt,

@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 )
@@ -21,7 +21,7 @@ func (r *Ruleset) Reset() {
 func (r *Ruleset) Close() {
 	err := r.fl.Close()
 	if err != nil && r.name != nil {
-		fmt.Printf("Failed to close file %s", *r.name)
+		log.Printf("Failed to close file %s", *r.name)
 	}
 }
 

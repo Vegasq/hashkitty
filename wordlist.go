@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 )
@@ -17,7 +17,7 @@ type Wordlist struct {
 func (w *Wordlist) Close() {
 	err := w.fl.Close()
 	if err != nil {
-		fmt.Printf("Failed to close file %s", *w.name)
+		log.Printf("Failed to close file %s", *w.name)
 	}
 }
 

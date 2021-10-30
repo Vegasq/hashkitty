@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 )
@@ -21,7 +21,7 @@ type LeftlistRecord struct {
 func (l *Leftlist) Close() {
 	err := l.fl.Close()
 	if err != nil {
-		fmt.Printf("Failed to close file %s", *l.name)
+		log.Printf("Failed to close file %s", *l.name)
 	}
 }
 
