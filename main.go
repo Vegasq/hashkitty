@@ -22,8 +22,9 @@ type Settings struct {
 	attackMode *int
 	hashType   *int
 
-	tasks   *chan Task
-	results *chan Task
+	tasks         *chan Task
+	results       *chan Task
+	potfileCloser *chan bool
 
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
@@ -95,7 +96,8 @@ func NewSettings() *Settings {
 	writes := sync.WaitGroup{}
 	tasksChan := make(chan Task)
 	goodTasksChan := make(chan Task)
-	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &progress, &writes}
+	potfileCloser := make(chan bool)
+	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &potfileCloser, &progress, &writes}
 }
 
 type Task struct {
@@ -129,16 +131,23 @@ func PotfileWriter(settings *Settings) {
 	if err != nil {
 		panic(err)
 	}
-	defer potfile.Close()
 	for {
-		task := <-*settings.results
-		//fmt.Println(task.word, task.hash)
-		_, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
-		settings.writes.Done()
-		if err != nil {
-			panic(err)
+		select {
+		case task := <-*settings.results:
+			_, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
+			settings.writes.Done()
+			if err != nil {
+				panic(err)
+			}
+		case <-*settings.potfileCloser:
+			potfile.Close()
+			*settings.potfileCloser <- true
 		}
 	}
+}
+func PotfileCloser(settings *Settings) {
+	*settings.potfileCloser <- true
+	<-*settings.potfileCloser
 }
 
 func spawnWorkers(settings *Settings) {
@@ -170,4 +179,5 @@ func main() {
 
 	settings.progress.Wait()
 	settings.writes.Wait()
+	PotfileCloser(settings)
 }
