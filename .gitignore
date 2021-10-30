@@ -9,3 +9,5 @@
 vcs.xml
 modules.xml
 hashkitty.iml
+.idea
+.idea/*

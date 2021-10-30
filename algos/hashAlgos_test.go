@@ -1,4 +1,4 @@
-package modes
+package algos
 
 import "testing"
 

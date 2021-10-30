@@ -1,214 +1,266 @@
 package main
 
 import (
-	"archive/zip"
 	"bufio"
-	"encoding/hex"
+	"context"
+	"errors"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"hashkitty/modes"
-	"log"
+	"github.com/hellflame/argparse"
+	"hashkitty/algos"
+	_ "hashkitty/rules"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
-type Record struct {
-	Hash     string
-	Salt     string
-	Plain    string
-	HashType string
-	RAW      string
+type Settings struct {
+	leftlist   *string
+	wordlist   *string
+	rules      *string
+	potfile    *string
+	attackMode *int
+	hashType   *int
 
-	Origin    string
-	AddedDate time.Time
+	tasks   *chan Task
+	results *chan Task
+
+	progress *sync.WaitGroup
+	writes   *sync.WaitGroup
 }
 
-func getArchives() []string {
-	hdoLocation, err := os.ReadFile("archives.location")
-	if err != nil {
-		panic("Failed to read connection uri")
+func NewSettings() *Settings {
+	conf := argparse.ParserConfig{
+		Usage:                  "",
+		EpiLog:                 "",
+		DisableHelp:            false,
+		ContinueOnHelp:         false,
+		DisableDefaultShowHelp: false,
+		DefaultAction:          nil,
+		AddShellCompletion:     false,
+		WithHint:               false,
 	}
-
-	var files []string
-	err = filepath.Walk(string(hdoLocation), func(path string, info os.FileInfo, err error) error {
-		if strings.Contains(path, ".zip") {
-			files = append(files, path)
-		}
-		return nil
+	parser := argparse.NewParser("HashKitty", "Hash cracking tool", &conf)
+	parser.String("h", "huh", &argparse.Option{
+		Positional: true,
+		Required:   true,
+		Help:       "huh",
 	})
+	leftlist := parser.String("l", "leftlist", &argparse.Option{
+		Positional: true,
+		Required:   true,
+		Help:       "Leftlist file location",
+	})
+
+	wordlist := parser.String("w", "wordlist", &argparse.Option{
+		Positional: true,
+		Required:   true,
+		Help:       "Wordlist file location",
+	})
+
+	rules := parser.String("r", "rules-file", &argparse.Option{
+		Help: "Rules file location",
+	})
+
+	potfile := parser.String("p", "potfile-path", &argparse.Option{
+		Help: "Potfile location",
+	})
+
+	attackMode := parser.Int("a", "attack-mode", &argparse.Option{
+		Help: "Attack Mode",
+	})
+
+	hashType := parser.Int("m", "hash-type", &argparse.Option{
+		Help: "Hash Type",
+	})
+
+	err := parser.Parse(os.Args)
 	if err != nil {
-		fmt.Println("Faled to read files", err)
+		// In case of error print error and print usage
+		// This can also be done by passing -h or --help flags
+		parser.PrintHelp()
 	}
-	return files
+	progress := sync.WaitGroup{}
+	writes := sync.WaitGroup{}
+	tasksChan := make(chan Task)
+	goodTasksChan := make(chan Task)
+	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &progress, &writes}
 }
 
-func parseBrokenBcrypt(rightPartLine string) (string, string) {
-	hash := rightPartLine[0:60]
-	var plain = rightPartLine[60:]
-	return hash, plain
+type Leftlist struct {
+	name *string
+	fl   *os.File
+
+	// attack mode 9
+	reader *bufio.Reader
 }
 
-func readHash(line string) (string, string) {
-	if strings.Contains(line, ":") {
-		parts := strings.SplitN(line, ":", 2)
-		return parts[0], parts[1]
-	}
-
-	if line[0] == '$' && line[1] == '2' && strings.Contains(line, ":") == false {
-		return parseBrokenBcrypt(line)
-	}
-
-	return "", ""
+type LeftlistRecord struct {
+	hash string
+	salt string
 }
 
-func decodeHashcatHexPlain(hexPlain string) string {
-	if strings.Contains(hexPlain, "$HEX[") {
-		hexPlain = strings.Replace(hexPlain, "$HEX[", "", 1)
-		hexPlain = strings.Replace(hexPlain, "]", "", 1)
-		bPlain, err := hex.DecodeString(hexPlain)
+func (l *Leftlist) GetNextRecord() (LeftlistRecord, error) {
+	if l.reader == nil {
+		l.reader = bufio.NewReader(l.fl)
+	}
+
+	var hash, eof = l.reader.ReadString('\n')
+	if len(hash) > 0 {
+		hash = strings.TrimRight(hash, "\r\n")
+		dividedHash := strings.SplitN(hash, ":", 2)
+		if len(dividedHash) == 2 {
+			return LeftlistRecord{dividedHash[0], dividedHash[1]}, nil
+		}
+		return LeftlistRecord{hash, ""}, nil
+	}
+	return LeftlistRecord{}, eof
+}
+
+func NewLeftlist(settings *Settings) *Leftlist {
+	//fmt.Println("leftlist", *settings.leftlist)
+	fl, err := os.Open(*settings.leftlist)
+	if err != nil {
+		panic("Failed to open leftlist")
+	}
+	return &Leftlist{settings.leftlist, fl, nil}
+}
+
+type Ruleset struct {
+	name *string
+	fl   *os.File
+
+	// attack mode 9
+	reader *bufio.Reader
+}
+
+func (r *Ruleset) Reset() {
+	r.fl.Seek(0, 0)
+}
+func (r *Ruleset) GetNextRule() (string, error) {
+	if r.reader == nil {
+		r.reader = bufio.NewReader(r.fl)
+	}
+
+	var rule, err = r.reader.ReadString('\n')
+	if err != nil {
+		return "", errors.New("failed to read a rule")
+	}
+	rule = strings.TrimRight(rule, "\r\n")
+
+	return rule, nil
+}
+
+func NewRuleset(settings *Settings) *Ruleset {
+	if len(*settings.rules) > 0 {
+		fl, err := os.Open(*settings.rules)
 		if err != nil {
-			panic("Failed to unhex")
+			panic("Failed to open ruleset")
 		}
-		hexPlain = string(bPlain)
+		return &Ruleset{settings.rules, fl, nil}
 	}
-	return hexPlain
+	return &Ruleset{nil, nil, nil}
 }
 
-func validate(hashType, hash, plain, salt string) bool {
-	validator := modes.HASHMODES[hashType]
-	if validator != nil {
-		return validator(hash, plain, salt)
-	}
-	return false
+type Wordlist struct {
+	name *string
+	fl   *os.File
+
+	// attack mode 9
+	reader *bufio.Reader
 }
 
-func parseLine(ch *chan Record, line string, path string) {
-	r := Record{}
-	values := strings.SplitN(line, " ", 2)
-	if len(values) != 2 {
-		fmt.Println("Unexpected line", line, len(values))
-		return
+func (w *Wordlist) GetNextLine() (string, error) {
+	if w.reader == nil {
+		w.reader = bufio.NewReader(w.fl)
 	}
-	r.HashType = values[0]
 
-	hashCont, leftovers := readHash(values[1])
-
-	var saltCont, plainCont string
-	for i := 0; i < len(leftovers); i++ {
-		if leftovers[i] == ':' {
-			plainCont += string(leftovers[i])
-			saltCont += plainCont
-			plainCont = ""
-		} else {
-			plainCont += string(leftovers[i])
-		}
-	}
-	if len(saltCont) > 0 {
-		saltCont = saltCont[0 : len(saltCont)-1]
-	}
-	plainCont = decodeHashcatHexPlain(plainCont)
-
-	// Validate hash/salt/plain/mode + temp fix for double cols
-	//isValid := validate(r.HashType, hashCont, plainCont, saltCont)
-	//if isValid == false && len(saltCont) > 0 {
-	//	isValid = validate(r.HashType, hashCont, plainCont, saltCont[0:len(saltCont)-1])
-	//	if isValid {
-	//		saltCont = saltCont[0 : len(saltCont)-1]
-	//	}
-	//}
-	//
-	//if isValid == false {
-	//	fmt.Println(r.HashType, "h", hashCont, "s", saltCont, "p", plainCont, "l", line)
-	//}
-
-	r.Hash = hashCont
-	r.Plain = plainCont
-	r.Salt = saltCont
-	r.RAW = line
-
-	r.Origin = path
-	r.AddedDate = time.Now().UTC()
-	*ch <- r
-}
-
-func readFile(ch *chan Record, f *zip.File, path string) {
-	flReader, err := f.Open()
-
+	var word, err = w.reader.ReadString('\n')
+	word = strings.TrimRight(word, "\r\n")
 	if err != nil {
-		fmt.Println("Failed to open file from archive", f)
+		return "", errors.New("failed to read a word")
 	}
 
-	fmt.Printf("Contents of %s:\n", f.Name)
-	scanner := bufio.NewScanner(flReader)
-	for scanner.Scan() {
-		parseLine(ch, scanner.Text(), path)
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	err = flReader.Close()
-	if err != nil {
-		fmt.Println(err)
-	}
+	return word, nil
 }
 
-func readArchive(ch *chan Record, path string) {
-	r, err := zip.OpenReader(path)
+func NewWordlist(settings *Settings) *Wordlist {
+	//fmt.Println("wordlist", *settings.wordlist)
+	fl, err := os.Open(*settings.wordlist)
 	if err != nil {
-		log.Fatal(err)
+		panic("Failed to open wordlist")
 	}
-	defer func(r *zip.ReadCloser) {
-		err := r.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(r)
-
-	for _, f := range r.File {
-		readFile(ch, f, path)
-	}
+	return &Wordlist{settings.wordlist, fl, nil}
 }
 
-func recordsReader(ch *chan Record, mh *MongoHolder) {
-	var rec Record
-	var batch []Record
+type Task struct {
+	hash string
+	salt string
+	word string
+}
+
+func Worker(settings *Settings) {
+	validator := algos.HASHCATALGOS[uint(*settings.hashType)]
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Hour)
+	defer cancel()
 	for {
-		rec = <-*ch
-		batch = append(batch, rec)
-		if len(batch) >= 999_000 {
-			mh.Insert(batch)
-			//recordsWriter(mh, batch)
-			batch = []Record{}
+		select {
+		case task := <-*settings.tasks:
+			settings.progress.Done()
+			if validator(task.hash, task.word, task.salt) {
+				fmt.Printf("OK %s %s\n", task.hash, task.word)
+				settings.writes.Add(1)
+				*settings.results <- task
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
-type Processed struct {
-	Path string
+func PotfileWriter(settings *Settings) {
+	potfile, err := os.OpenFile(*settings.potfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(777))
+	if err != nil {
+		panic(err)
+	}
+	defer potfile.Close()
+	for {
+		task := <-*settings.results
+		//fmt.Println(task.word, task.hash)
+		n, err := potfile.WriteString(fmt.Sprintf("%s:%s\n", task.hash, task.word))
+		settings.writes.Done()
+		if err != nil {
+			fmt.Println(n)
+			panic(err)
+		}
+	}
 }
 
 func main() {
-	records := make(chan Record)
-	mh := NewMongoHolder()
-	go recordsReader(&records, mh)
-	files := getArchives()
-	for i := 0; i < len(files); i++ {
-		cur, err := mh.PROCESSEDB.Find(*mh.Context, bson.M{"path": files[i]})
-		if err != nil {
-			fmt.Println(err)
-		}
-		exist := cur.Next(*mh.Context)
-		if exist == false {
-			fmt.Println(files[i])
-			readArchive(&records, files[i])
-			mh.PROCESSEDB.InsertOne(*mh.Context, Processed{files[i]})
-		} else {
-			fmt.Println("SKIP", files[i])
-			//return
-		}
+	settings := NewSettings()
+	for i := runtime.NumCPU() * 10; i != 0; i-- {
+		go Worker(settings)
 	}
+
+	go PotfileWriter(settings)
+
+	leftlist := NewLeftlist(settings)
+	defer leftlist.fl.Close()
+	wordlist := NewWordlist(settings)
+	defer wordlist.fl.Close()
+	ruleset := NewRuleset(settings)
+	defer ruleset.fl.Close()
+
+	if *settings.attackMode == 0 {
+		fmt.Println("Start attack mode 0")
+		mode0(settings, leftlist, wordlist, ruleset)
+	} else if *settings.attackMode == 9 {
+		fmt.Println("Start attack mode 9")
+		mode9(settings, leftlist, wordlist, ruleset)
+	}
+
+	settings.progress.Wait()
+	settings.writes.Wait()
 }

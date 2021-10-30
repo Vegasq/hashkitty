@@ -1,4 +1,4 @@
-package modes
+package algos
 
 import (
 	"crypto/md5"
@@ -11,20 +11,21 @@ import (
 	"io"
 )
 
-var HASHCATMODES = map[uint]func(string, string, string) bool{
-	0:    MD5,
-	10:   MD5PLAINSALT,
-	11:   MD5PLAINSALT,
-	20:   MD5SALTPLAIN,
-	100:  SHA1,
-	400:  WORDPRESS,
-	2611: VBULLETIN,
-	2711: VBULLETIN,
-	2811: MYBB,
-	3200: BCRYPT,
+var HASHCATALGOS = map[uint]func(string, string, string) bool{
+	0:     MD5,
+	10:    MD5PLAINSALT,
+	11:    MD5PLAINSALT,
+	20:    MD5SALTPLAIN,
+	100:   SHA1,
+	400:   WORDPRESS,
+	2611:  VBULLETIN,
+	2711:  VBULLETIN,
+	2811:  MYBB,
+	3200:  BCRYPT,
+	99001: ARGON2,
 }
 
-var HASHMODES = map[string]func(string, string, string) bool{
+var HASHALGOS = map[string]func(string, string, string) bool{
 	"IPB":                      IPB,
 	"MD5(MD5(SALT)MD5(PLAIN))": IPB,
 	"VBULLETIN":                VBULLETIN,
