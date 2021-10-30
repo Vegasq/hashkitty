@@ -1,0 +1,40 @@
+name: Functional Tests
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Build
+        run: go build -v
+
+      - name: Execute mode 0 no rules
+        run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --potfile-path potfile_0.txt
+
+      - name: Execute mode 0 with rules
+        run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --rules-file test_data/ruleset.txt --potfile-path potfile_0r.txt
+
+      - name: Execute mode 9 no rules
+        run: ./hashkitty -a 9 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --potfile-path potfile_9.txt
+
+      - name: Verify mode 0 no rules
+        run: cmp potfile_0.txt test_data/potfile_0.txt
+
+      - name: Verify mode 0 with rules
+        run: cmp potfile_0.txt test_data/potfile_0.txt
+
+      - name: Verify mode 9 no rules
+        run: cmp potfile_9.txt test_data/potfile_9.txt

@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hellflame/argparse"
 	"hashkitty/algos"
 	_ "hashkitty/rules"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -61,7 +63,8 @@ func NewSettings() *Settings {
 	})
 
 	potfile := parser.String("p", "potfile-path", &argparse.Option{
-		Help: "Potfile location",
+		Help:    "Potfile location",
+		Default: "potfile.txt",
 	})
 
 	attackMode := parser.Int("a", "attack-mode", &argparse.Option{
@@ -78,6 +81,16 @@ func NewSettings() *Settings {
 		// This can also be done by passing -h or --help flags
 		parser.PrintHelp()
 	}
+
+	if _, err := os.Stat(*potfile); errors.Is(err, os.ErrNotExist) {
+		os.MkdirAll(filepath.Dir(*potfile), 0660)
+		fl, err := os.Create(*potfile)
+		if err != nil {
+			panic(err)
+		}
+		fl.Close()
+	}
+
 	progress := sync.WaitGroup{}
 	writes := sync.WaitGroup{}
 	tasksChan := make(chan Task)

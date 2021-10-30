@@ -20,7 +20,7 @@ func (r *Ruleset) Reset() {
 
 func (r *Ruleset) Close() {
 	err := r.fl.Close()
-	if err != nil {
+	if err != nil && r.name != nil {
 		fmt.Printf("Failed to close file %s", *r.name)
 	}
 }
