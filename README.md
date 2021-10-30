@@ -1,5 +1,7 @@
 # HashKitty
 
+![Tests](https://github.com/vegasq/hashkitty/actions/workflows/go.yml/badge.svg?branch=master)
+
 Reimplementation of _some_ of the HashCat (https://github.com/hashcat/hashcat) features in GO.
 
 ## What works
