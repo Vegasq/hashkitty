@@ -38,6 +38,12 @@ jobs:
              sort -o test_data/potfile_0r.txt test_data/potfile_0r.txt &&
              sort -o test_data/potfile_9.txt test_data/potfile_9.txt
 
+      - name: file ends1
+        run: od -c /tmp/potfile_9.txt
+
+      - name: file ends1
+        run: od -c test_data/potfile_9.txt
+
       - name: Verify mode 9 no rules
         run: cmp /tmp/potfile_9.txt test_data/potfile_9.txt
 
