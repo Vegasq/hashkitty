@@ -1,7 +1,8 @@
 github.com/GerardSoleCa/wordpress-hash-go v0.0.0-20161116172340-2bdd71ec2eb6 h1:McUJxKwNxmATYrmwLT+xQhv+23/3C1EdS6UCtBs7VmM=
 github.com/GerardSoleCa/wordpress-hash-go v0.0.0-20161116172340-2bdd71ec2eb6/go.mod h1:CR81cFWy1yVbpMyG5NEpsQew/i6Hu98f2q6gBLXJ/Vo=
-github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/hellflame/argparse v1.6.0 h1:e5hnbB9ugGDn3zlIk36uwx61vv/aGKC1vYTCkbMtA30=
 github.com/hellflame/argparse v1.6.0/go.mod h1:nOtOQAtkWh6u5msq6huJxZtjb+Yg9VeN0e7vRuBS49E=
 github.com/matthewhartstonge/argon2 v0.1.5 h1:vkb9Z/AsIiKT8ko8Bx9jOPbgh0skcrBQVaniYJ61F+w=

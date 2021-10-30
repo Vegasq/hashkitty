@@ -2,7 +2,26 @@ package main
 
 import (
 	"hashkitty/rules"
+	"log"
 )
+
+
+func sendTask(settings *Settings, hash LeftlistRecord, word string) {
+	log.Println("CHECK " + hash.hash + " " + hash.salt + " " + word)
+
+	cracked := *settings.cracked
+	if cracked[hash.hash[0:32]] == true {
+		log.Println("Skipping already known hash")
+		return
+	}
+
+	settings.progress.Add(1)
+	*(settings.tasks) <- Task{
+		hash: hash.hash,
+		salt: hash.salt,
+		word: word,
+	}
+}
 
 func combineWordWithRules(settings *Settings, ruleset *Ruleset, word string, hash LeftlistRecord) {
 	ruleset.Reset()

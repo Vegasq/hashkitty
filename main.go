@@ -28,6 +28,8 @@ type Settings struct {
 
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
+
+	cracked *map[string]bool
 }
 
 func NewSettings() *Settings {
@@ -38,7 +40,7 @@ func NewSettings() *Settings {
 		ContinueOnHelp:         false,
 		DisableDefaultShowHelp: false,
 		DefaultAction:          nil,
-		AddShellCompletion:     false,
+		AddShellCompletion:     true,
 		WithHint:               false,
 	}
 	parser := argparse.NewParser("HashKitty", "Hash cracking tool", &conf)
@@ -70,10 +72,12 @@ func NewSettings() *Settings {
 
 	attackMode := parser.Int("a", "attack-mode", &argparse.Option{
 		Help: "Attack Mode",
+		Required: true,
 	})
 
 	hashType := parser.Int("m", "hash-type", &argparse.Option{
 		Help: "Hash Type",
+		Required: true,
 	})
 
 	err := parser.Parse(os.Args)
@@ -97,7 +101,11 @@ func NewSettings() *Settings {
 	tasksChan := make(chan Task)
 	goodTasksChan := make(chan Task)
 	potfileCloser := make(chan bool)
-	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &potfileCloser, &progress, &writes}
+
+	// Possible collision
+	cracked := map[string]bool{}
+
+	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &potfileCloser, &progress, &writes, &cracked}
 }
 
 type Task struct {
@@ -116,6 +124,10 @@ func Worker(settings *Settings) {
 		case task := <-*settings.tasks:
 			if validator(task.hash, task.word, task.salt) {
 				log.Printf("OK %s %s\n", task.hash, task.word)
+
+				cracked := *settings.cracked
+				cracked[task.hash[0:32]] = true
+
 				settings.writes.Add(1)
 				*settings.results <- task
 			}
@@ -179,6 +191,7 @@ func main() {
 		mode9(settings, leftlist, wordlist, ruleset)
 	}
 
+	log.Println("Waiting for workers to finish")
 	settings.progress.Wait()
 	settings.writes.Wait()
 	PotfileCloser(settings)
