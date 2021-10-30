@@ -28,7 +28,7 @@ jobs:
         run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --rules-file test_data/ruleset.txt --potfile-path /tmp/potfile_0r.txt
 
       - name: Execute mode 9 no rules
-        run: ./hashkitty -a 9 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --potfile-path /tmp/potfile_9.txt
+        run: ./hashkitty -a 9 -m 0 test_data/leftlist.txt test_data/wordlist_9.txt --potfile-path /tmp/potfile_9.txt
 
       - name: Preseor potfiles
         run: sort -o /tmp/potfile_0.txt /tmp/potfile_0.txt &&
