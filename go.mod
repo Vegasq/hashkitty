@@ -1,4 +1,4 @@
-module hashkitty
+module github.com/vegasq/hashkitty
 
 go 1.17
 

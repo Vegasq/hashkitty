@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"hashkitty/algos"
+	"github.com/vegasq/hashkitty/algos"
 	"log"
 	"runtime"
 	"time"
