@@ -15,7 +15,7 @@ func sliceToArray(s string) [32]int32 {
 }
 
 func sendTask(settings *Settings, hash LeftlistRecord, word string) {
-	log.Println("CHECK " + hash.hash + " " + hash.salt + " " + word)
+	//log.Println("CHECK " + hash.hash + " " + hash.salt + " " + word)
 
 	cracked := *settings.cracked
 	if cracked[sliceToArray(hash.hash)] == true {

@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+func CheckedReporter(settings *Settings) {
+	t := time.Now()
+	for {
+		if time.Since(t) > time.Second*5 {
+			t = time.Now()
+			log.Printf("Checked %d/%d", *settings.checked, settings.maxGuesses)
+		}
+	}
+}
+
 func Worker(settings *Settings) {
 	validator := algos.HASHCATALGOS[uint(*settings.hashType)]
 
@@ -27,6 +37,11 @@ func Worker(settings *Settings) {
 				settings.writes.Add(1)
 				*settings.results <- task
 			}
+
+			settings.crackedMutex.Lock()
+			*settings.checked++
+			settings.crackedMutex.Unlock()
+
 			settings.progress.Done()
 		case <-ctx.Done():
 			return
