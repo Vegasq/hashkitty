@@ -35,9 +35,10 @@ positional arguments:
 flags:
   --attack-mode ATTACK-MODE, -a ATTACK-MODE     Attack Mode
   --hash-type HASH-TYPE, -m HASH-TYPE           Hash Type
-  --rules-file RULES-FILE, -r RULES-FILE        Rules file location
-  --potfile-path POTFILE-PATH, -p POTFILE-PATH  Potfile location
-  --hex-salt, -hs                               Salts provided in hex
+  --rules-file RULES-FILE, -r RULES-FILE        Multiple rules applied to each word from wordlists
+  --potfile-path POTFILE-PATH, -p POTFILE-PATH  Specific path to potfile
+  --hex-salt                                    Assume salt is given in hex
+  --remove                                      Enable removal of hashes once they are cracked
 ```
 
 ### Supported rules
