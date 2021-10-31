@@ -50,7 +50,7 @@ func combineWordWithRules(settings *Settings, ruleset *Ruleset, word string, has
 func combineHashWithWords(settings *Settings, hash LeftlistRecord, wordlist *Wordlist, ruleset *Ruleset) {
 	wordlist.Reset()
 	for {
-		word, eof := wordlist.GetNextLine()
+		word, eof := wordlist.ReadString()
 
 		if len(word) > 0 {
 			if ruleset.name != nil {

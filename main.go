@@ -17,7 +17,6 @@ func main() {
 	go potfileWriter(settings)
 
 	leftlist := NewLeftlist(settings)
-	defer leftlist.Close()
 	wordlist := NewWordlist(settings)
 	defer wordlist.Close()
 	ruleset := NewRuleset(settings)
@@ -32,6 +31,12 @@ func main() {
 
 	log.Println("Waiting for workers to finish")
 	settings.progress.Wait()
+	// Once settings.progress is done, we can close leftlist
+	leftlist.Close()
+
 	settings.writes.Wait()
 	potfileCloser(settings)
+	if *settings.remove {
+		leftlist.CleanLeftlistWithPotfile(settings)
+	}
 }

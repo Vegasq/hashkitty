@@ -16,6 +16,7 @@ type Settings struct {
 	attackMode *int
 	hashType   *int
 	hexSalt    *bool
+	remove     *bool
 
 	tasks         *chan Task
 	results       *chan Task
@@ -24,7 +25,8 @@ type Settings struct {
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
 
-	cracked *map[[32]int32]bool
+	cracked      *map[[32]int32]bool
+	crackedMutex *sync.RWMutex
 }
 
 func NewSettings() *Settings {
@@ -75,6 +77,10 @@ func NewSettings() *Settings {
 		Required: true,
 	})
 
+	remove := parser.Flag("", "remove", &argparse.Option{
+		Help: "Enable removal of hashes once they are cracked",
+	})
+
 	hexSalt := parser.Flag("hs", "hex-salt", &argparse.Option{
 		Help: "Salts provided in hex",
 	})
@@ -103,6 +109,7 @@ func NewSettings() *Settings {
 
 	// Possible collision
 	cracked := map[[32]int32]bool{}
+	crackedMutex := sync.RWMutex{}
 
 	return &Settings{
 		leftlist,
@@ -112,11 +119,13 @@ func NewSettings() *Settings {
 		attackMode,
 		hashType,
 		hexSalt,
+		remove,
 		&tasksChan,
 		&goodTasksChan,
 		&potfileCloser,
 		&progress,
 		&writes,
 		&cracked,
+		&crackedMutex,
 	}
 }
