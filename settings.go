@@ -25,7 +25,8 @@ type Settings struct {
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
 
-	cracked *map[[32]int32]bool
+	cracked      *map[[32]int32]bool
+	crackedMutex *sync.RWMutex
 }
 
 func NewSettings() *Settings {
@@ -108,6 +109,7 @@ func NewSettings() *Settings {
 
 	// Possible collision
 	cracked := map[[32]int32]bool{}
+	crackedMutex := sync.RWMutex{}
 
 	return &Settings{
 		leftlist,
@@ -124,5 +126,6 @@ func NewSettings() *Settings {
 		&progress,
 		&writes,
 		&cracked,
+		&crackedMutex,
 	}
 }

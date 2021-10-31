@@ -20,7 +20,9 @@ func Worker(settings *Settings) {
 				log.Printf("OK %s %s\n", task.hash, task.word)
 
 				cracked := *settings.cracked
+				settings.crackedMutex.Lock()
 				cracked[sliceToArray(task.hash)] = true
+				settings.crackedMutex.Unlock()
 
 				settings.writes.Add(1)
 				*settings.results <- task
