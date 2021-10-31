@@ -22,6 +22,9 @@ jobs:
       - name: Execute mode 0 no rules
         run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --potfile-path /tmp/potfile_0.txt
 
+      - name: Execute mode 10 with rules and salt
+        run: ./hashkitty -a 0 -m 10 test_data/leftlist_salt.txt test_data/wordlist_0.txt --potfile-path /tmp/potfile_0rs.txt --rules-file test_data/ruleset.txt --hex-salt
+
       - name: Execute mode 0 with rules
         run: ./hashkitty -a 0 -m 0 test_data/leftlist.txt test_data/wordlist_0.txt --rules-file test_data/ruleset.txt --potfile-path /tmp/potfile_0r.txt
 
@@ -32,9 +35,11 @@ jobs:
         run: sort -o /tmp/potfile_0.txt /tmp/potfile_0.txt &&
              sort -o /tmp/potfile_0r.txt /tmp/potfile_0r.txt &&
              sort -o /tmp/potfile_9.txt /tmp/potfile_9.txt &&
+             sort -o /tmp/potfile_0rs.txt /tmp/potfile_0rs.txt &&
              sort -o test_data/potfile_0.txt test_data/potfile_0.txt &&
              sort -o test_data/potfile_0r.txt test_data/potfile_0r.txt &&
-             sort -o test_data/potfile_9.txt test_data/potfile_9.txt
+             sort -o test_data/potfile_9.txt test_data/potfile_9.txt &&
+             sort -o test_data/potfile_0rs.txt test_data/potfile_0rs.txt
 
       - name: Verify mode 9 no rules
         run: cmp /tmp/potfile_9.txt test_data/potfile_9.txt
@@ -44,3 +49,6 @@ jobs:
 
       - name: Verify mode 0 with rules
         run: cmp /tmp/potfile_0r.txt test_data/potfile_0r.txt
+
+      - name: Verify mode 10 with rules and salt
+        run: cmp /tmp/potfile_0rs.txt test_data/potfile_0rs.txt

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"log"
 	"os"
 	"strings"
@@ -11,6 +12,8 @@ type Leftlist struct {
 	name   *string
 	fl     *os.File
 	reader *bufio.Reader
+
+	hexSalt bool
 }
 
 type LeftlistRecord struct {
@@ -37,6 +40,9 @@ func (l *Leftlist) GetNextRecord() (LeftlistRecord, error) {
 			salt = dividedLine[1]
 		}
 	}
+	if l.hexSalt {
+		salt = hexToString(salt)
+	}
 	return LeftlistRecord{hash, salt}, eof
 }
 
@@ -45,5 +51,13 @@ func NewLeftlist(settings *Settings) *Leftlist {
 	if err != nil {
 		panic("Failed to open leftlist")
 	}
-	return &Leftlist{settings.leftlist, fl, bufio.NewReader(fl)}
+	return &Leftlist{settings.leftlist, fl, bufio.NewReader(fl), *settings.hexSalt}
+}
+
+func hexToString(salt string) string {
+	s, err := hex.DecodeString(salt)
+	if err != nil {
+		panic(err)
+	}
+	return string(s)
 }

@@ -25,6 +25,21 @@ Reimplementation of _some_ of the [HashCat](https://github.com/hashcat/hashcat) 
 hashkitty -a 0 -m 99001 leftlist.txt wordlist.txt  --potfile-path potfile.txt --rules-file rules.txt
 ```
 
+```
+usage: hashkitty [LEFTLIST] [WORDLIST] [--attack-mode ATTACK-MODE] [--hash-type HASH-TYPE] [--rules-file RULES-FILE] [--potfile-path POTFILE-PATH]
+
+positional arguments:
+  LEFTLIST                                      Leftlist file location
+  WORDLIST                                      Wordlist file location
+
+flags:
+  --attack-mode ATTACK-MODE, -a ATTACK-MODE     Attack Mode
+  --hash-type HASH-TYPE, -m HASH-TYPE           Hash Type
+  --rules-file RULES-FILE, -r RULES-FILE        Rules file location
+  --potfile-path POTFILE-PATH, -p POTFILE-PATH  Potfile location
+  --hex-salt, -hs                               Salts provided in hex
+```
+
 ### Supported rules
 
 |        Name         |  Function  |                      Description                      |  Example Rule  |  Input Word  |         Output Word        |  Note  |

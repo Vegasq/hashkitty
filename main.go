@@ -21,6 +21,7 @@ type Settings struct {
 	potfile    *string
 	attackMode *int
 	hashType   *int
+	hexSalt    *bool
 
 	tasks         *chan Task
 	results       *chan Task
@@ -29,7 +30,7 @@ type Settings struct {
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
 
-	cracked *map[string]bool
+	cracked *map[[32]int32]bool
 }
 
 func NewSettings() *Settings {
@@ -71,13 +72,17 @@ func NewSettings() *Settings {
 	})
 
 	attackMode := parser.Int("a", "attack-mode", &argparse.Option{
-		Help: "Attack Mode",
+		Help:     "Attack Mode",
 		Required: true,
 	})
 
 	hashType := parser.Int("m", "hash-type", &argparse.Option{
-		Help: "Hash Type",
+		Help:     "Hash Type",
 		Required: true,
+	})
+
+	hexSalt := parser.Flag("hs", "hex-salt", &argparse.Option{
+		Help: "Salts provided in hex",
 	})
 
 	err := parser.Parse(os.Args)
@@ -103,9 +108,23 @@ func NewSettings() *Settings {
 	potfileCloser := make(chan bool)
 
 	// Possible collision
-	cracked := map[string]bool{}
+	cracked := map[[32]int32]bool{}
 
-	return &Settings{leftlist, wordlist, rules, potfile, attackMode, hashType, &tasksChan, &goodTasksChan, &potfileCloser, &progress, &writes, &cracked}
+	return &Settings{
+		leftlist,
+		wordlist,
+		rules,
+		potfile,
+		attackMode,
+		hashType,
+		hexSalt,
+		&tasksChan,
+		&goodTasksChan,
+		&potfileCloser,
+		&progress,
+		&writes,
+		&cracked,
+	}
 }
 
 type Task struct {
@@ -126,7 +145,7 @@ func Worker(settings *Settings) {
 				log.Printf("OK %s %s\n", task.hash, task.word)
 
 				cracked := *settings.cracked
-				cracked[task.hash[0:32]] = true
+				cracked[sliceToArray(task.hash)] = true
 
 				settings.writes.Add(1)
 				*settings.results <- task
