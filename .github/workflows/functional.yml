@@ -35,10 +35,10 @@ jobs:
         run: sort -o /tmp/potfile_0.txt /tmp/potfile_0.txt &&
              sort -o /tmp/potfile_0r.txt /tmp/potfile_0r.txt &&
              sort -o /tmp/potfile_9.txt /tmp/potfile_9.txt &&
+             sort -o /tmp/potfile_0rs.txt /tmp/potfile_0rs.txt
              sort -o test_data/potfile_0.txt test_data/potfile_0.txt &&
              sort -o test_data/potfile_0r.txt test_data/potfile_0r.txt &&
              sort -o test_data/potfile_9.txt test_data/potfile_9.txt &&
-             sort -o test_data/potfile_0rs.txt test_data/potfile_0rs.txt
 
       - name: Verify mode 9 no rules
         run: cmp /tmp/potfile_9.txt test_data/potfile_9.txt
