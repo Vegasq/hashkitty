@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime/debug"
+	"time"
 )
 
 type Task struct {
@@ -56,12 +58,22 @@ func calculateMaxGuesses(settings *Settings) uint32 {
 	return llLines * wlLines * rsLines
 }
 
+func GC() {
+	for {
+		t := time.Now()
+		if time.Since(t) > time.Second*30 {
+			debug.FreeOSMemory()
+		}
+	}
+}
+
 func main() {
 	settings := NewSettings()
 
 	spawnWorkers(settings)
 	go potfileWriter(settings)
 	go CheckedReporter(settings)
+	go GC()
 
 	leftlist := NewLeftlist(settings)
 	wordlist := NewWordlist(settings)
