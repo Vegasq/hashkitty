@@ -3,15 +3,16 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 )
 
 type Leftlist struct {
-	name   *string
-	fl     *os.File
-	reader *bufio.Reader
+	TextFileProcessor
 
 	hexSalt bool
 }
@@ -21,16 +22,47 @@ type LeftlistRecord struct {
 	salt string
 }
 
-func (l *Leftlist) Close() {
-	err := l.fl.Close()
-	if err != nil {
-		log.Printf("Failed to close file %s", *l.name)
+func isLineInFile(line string, potfile *TextFileProcessor) bool {
+	potfile.Reset()
+	for {
+		ptLine, ptErr := potfile.ReadString()
+		if ptLine == line {
+			return true
+		}
+		if errors.Is(ptErr, io.EOF) {
+			break
+		}
 	}
+	return false
+}
+
+func (l *Leftlist) CleanLeftlistWithPotfile(settings *Settings) {
+	potfile := NewTextFileProcessor(*settings.potfile)
+	tmpLeftlist := NewTextFileProcessor(*settings.leftlist + "_tmp")
+	leftlist := NewTextFileProcessor(*settings.leftlist)
+
+	for {
+		llLine, llErr := leftlist.ReadString()
+		if isLineInFile(llLine, potfile) == false {
+			_, nptErr := tmpLeftlist.WriteString(llLine)
+			if nptErr != nil {
+				log.Println(nptErr)
+			}
+		}
+		if llErr != nil {
+			break
+		}
+	}
+
+	potfile.Close()
+	leftlist.Close()
+	tmpLeftlist.Close()
+
+	copyFile(*settings.leftlist+"_tmp", *settings.leftlist)
 }
 
 func (l *Leftlist) GetNextRecord() (LeftlistRecord, error) {
-	var line, eof = l.reader.ReadString('\n')
-	line = strings.TrimRight(line, "\r\n")
+	var line, eof = l.ReadString()
 
 	var hash, salt string
 	if len(line) > 0 {
@@ -51,7 +83,7 @@ func NewLeftlist(settings *Settings) *Leftlist {
 	if err != nil {
 		panic("Failed to open leftlist")
 	}
-	return &Leftlist{settings.leftlist, fl, bufio.NewReader(fl), *settings.hexSalt}
+	return &Leftlist{TextFileProcessor{settings.leftlist, fl, bufio.NewReader(fl)}, *settings.hexSalt}
 }
 
 func hexToString(salt string) string {
@@ -60,4 +92,29 @@ func hexToString(salt string) string {
 		panic(err)
 	}
 	return string(s)
+}
+
+func copyFile(src, dst string) (int64, error) {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+
+	if !sourceFileStat.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+	nBytes, err := io.Copy(destination, source)
+	return nBytes, err
 }

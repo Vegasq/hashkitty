@@ -16,6 +16,7 @@ type Settings struct {
 	attackMode *int
 	hashType   *int
 	hexSalt    *bool
+	remove     *bool
 
 	tasks         *chan Task
 	results       *chan Task
@@ -75,6 +76,10 @@ func NewSettings() *Settings {
 		Required: true,
 	})
 
+	remove := parser.Flag("", "remove", &argparse.Option{
+		Help: "Enable removal of hashes once they are cracked",
+	})
+
 	hexSalt := parser.Flag("hs", "hex-salt", &argparse.Option{
 		Help: "Salts provided in hex",
 	})
@@ -112,6 +117,7 @@ func NewSettings() *Settings {
 		attackMode,
 		hashType,
 		hexSalt,
+		remove,
 		&tasksChan,
 		&goodTasksChan,
 		&potfileCloser,

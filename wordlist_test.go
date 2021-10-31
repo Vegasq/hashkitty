@@ -27,7 +27,7 @@ func TestNewWordlist(t *testing.T) {
 	wl.Reset()
 
 	for _, l := range []string{line1, line2, line3} {
-		plain, _ := wl.GetNextLine()
+		plain, _ := wl.ReadString()
 		if l != plain {
 			t.Errorf("Incorrect line in wordlist reader %s != %s", plain, l)
 		}
