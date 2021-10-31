@@ -5,12 +5,20 @@ import (
 	"log"
 )
 
+func sliceToArray(s string) [32]int32 {
+	// we use last 32 chars to identify the hash
+	var a [32]int32
+	for i, j := 32, 0; i > 0; i, j = i-1, j+1 {
+		a[j] = int32(s[i-1])
+	}
+	return a
+}
 
 func sendTask(settings *Settings, hash LeftlistRecord, word string) {
 	log.Println("CHECK " + hash.hash + " " + hash.salt + " " + word)
 
 	cracked := *settings.cracked
-	if cracked[hash.hash[0:32]] == true {
+	if cracked[sliceToArray(hash.hash)] == true {
 		log.Println("Skipping already known hash")
 		return
 	}
