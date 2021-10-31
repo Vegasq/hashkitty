@@ -22,7 +22,8 @@ func TestNewLeftlist(t *testing.T) {
 
 	defer os.Remove(leftlistName)
 
-	settings := Settings{leftlist: &leftlistName}
+	f := false
+	settings := Settings{leftlist: &leftlistName, hexSalt: &f}
 	ll := NewLeftlist(&settings)
 
 	for _, l := range []string{line1, line2, line3, ""} {
