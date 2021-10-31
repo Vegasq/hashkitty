@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"log"
+	"os"
 )
 
 type Task struct {
@@ -10,15 +14,59 @@ type Task struct {
 	word string
 }
 
+//https://stackoverflow.com/questions/24562942/golang-how-do-i-determine-the-number-of-lines-in-a-file-efficiently/24563853
+func lineCounter(r io.Reader) (uint32, error) {
+	buf := make([]byte, 32*1024)
+	count := uint32(0)
+	lineSep := []byte{'\n'}
+
+	for {
+		c, err := r.Read(buf)
+		count += uint32(bytes.Count(buf[:c], lineSep))
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
+	}
+}
+
+func calculateMaxGuesses(settings *Settings) uint32 {
+	ll, _ := os.Open(*settings.leftlist)
+	llLines, _ := lineCounter(ll)
+	ll.Close()
+	llLines++
+
+	fmt.Println(*settings.wordlist)
+	wl, _ := os.Open(*settings.wordlist)
+	wlLines, _ := lineCounter(wl)
+	wl.Close()
+	wlLines++
+
+	rsLines := uint32(1)
+	if *settings.rules != "" {
+		rs, _ := os.Open(*settings.rules)
+		rsLines, _ = lineCounter(rs)
+		rs.Close()
+	}
+
+	return llLines * wlLines * rsLines
+}
+
 func main() {
 	settings := NewSettings()
 
 	spawnWorkers(settings)
 	go potfileWriter(settings)
+	go CheckedReporter(settings)
 
 	leftlist := NewLeftlist(settings)
 	wordlist := NewWordlist(settings)
 	defer wordlist.Close()
+
 	ruleset := NewRuleset(settings)
 	defer ruleset.Close()
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hellflame/argparse"
 	"os"
 	"path/filepath"
@@ -27,6 +28,8 @@ type Settings struct {
 
 	cracked      *map[[32]int32]bool
 	crackedMutex *sync.RWMutex
+	checked      *uint32
+	maxGuesses   uint32
 }
 
 func NewSettings() *Settings {
@@ -102,6 +105,7 @@ func NewSettings() *Settings {
 	}
 
 	progress := sync.WaitGroup{}
+
 	writes := sync.WaitGroup{}
 	tasksChan := make(chan Task)
 	goodTasksChan := make(chan Task)
@@ -111,7 +115,9 @@ func NewSettings() *Settings {
 	cracked := map[[32]int32]bool{}
 	crackedMutex := sync.RWMutex{}
 
-	return &Settings{
+	var checked uint32 = 0
+	var maxGuesses uint32 = 0
+	s := &Settings{
 		leftlist,
 		wordlist,
 		rules,
@@ -127,5 +133,10 @@ func NewSettings() *Settings {
 		&writes,
 		&cracked,
 		&crackedMutex,
+		&checked,
+		maxGuesses,
 	}
+	s.maxGuesses = calculateMaxGuesses(s)
+	fmt.Println(s.maxGuesses)
+	return s
 }
