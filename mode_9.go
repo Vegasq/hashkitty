@@ -6,7 +6,7 @@ func mode9(settings *Settings, leftlist *Leftlist, wordlist *Wordlist, ruleset *
 		word, wlEOF := wordlist.GetNextLine()
 
 		if ruleset.name != nil {
-			combineWordWithRules(settings, ruleset,word,  hash)
+			combineWordWithRules(settings, ruleset, word, hash)
 		} else {
 			sendTask(settings, hash, word)
 		}
