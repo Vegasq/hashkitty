@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/hellflame/argparse"
 	"os"
 	"path/filepath"
@@ -137,6 +136,5 @@ func NewSettings() *Settings {
 		maxGuesses,
 	}
 	s.maxGuesses = calculateMaxGuesses(s)
-	fmt.Println(s.maxGuesses)
 	return s
 }
