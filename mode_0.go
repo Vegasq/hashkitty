@@ -1,7 +1,7 @@
 package main
 
 import (
-	"hashkitty/rules"
+	"github.com/vegasq/hashkitty/rules"
 	"log"
 )
 
