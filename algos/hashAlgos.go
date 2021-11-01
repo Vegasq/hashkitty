@@ -1,3 +1,8 @@
+/*
+Package algos
+
+Collection of hash algorithms and their map to IDs in hashcat.
+*/
 package algos
 
 import (

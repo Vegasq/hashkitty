@@ -10,7 +10,7 @@ import (
 
 var lastChecked = uint32(1)
 
-func CheckedReporter(settings *Settings) {
+func checkedReporter(settings *Settings) {
 	t := time.Now()
 	for {
 		if time.Since(t) > time.Second*5 {
@@ -31,7 +31,7 @@ func CheckedReporter(settings *Settings) {
 	}
 }
 
-func Worker(settings *Settings) {
+func worker(settings *Settings) {
 	validator := algos.HASHCATALGOS[uint(*settings.hashType)]
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Hour)
@@ -59,7 +59,7 @@ func Worker(settings *Settings) {
 func spawnWorkers(settings *Settings) {
 	log.Printf("Routines before workers spawn: %d", runtime.NumGoroutine())
 	for i := runtime.NumCPU() * 10; i != 0; i-- {
-		go Worker(settings)
+		go worker(settings)
 	}
 	log.Printf("Routines after workers spawn: %d", runtime.NumGoroutine())
 }

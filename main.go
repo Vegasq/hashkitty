@@ -1,3 +1,8 @@
+/*
+Package main
+
+Reimplementation of _some_ of the [HashCat](https://github.com/hashcat/hashcat) features in GO.
+*/
 package main
 
 import (
@@ -81,7 +86,7 @@ func main() {
 
 	spawnWorkers(settings)
 	go potfileWriter(settings)
-	go CheckedReporter(settings)
+	go checkedReporter(settings)
 
 	leftlist := NewLeftlist(settings)
 	wordlist := NewWordlist(settings)
