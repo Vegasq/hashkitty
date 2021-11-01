@@ -4,12 +4,18 @@ import (
 	"github.com/vegasq/hashkitty/rules"
 )
 
-func sliceToArray(s string) [32]int32 {
+func sliceToArray(t *Task) [64]int32 {
 	// we use last 32 chars to identify the hash
-	var a [32]int32
-	for i, j := len(s)-1, 0; j < 32 && i >= 0; i, j = i-1, j+1 {
-		a[j] = int32(s[i])
+	var a [64]int32
+
+	for i, j := len(t.hash)-1, 0; j < 32 && i >= 0; i, j = i-1, j+1 {
+		a[j] = int32(t.hash[i])
 	}
+
+	for i, j := 0, 32; i < len(t.salt); i++ {
+		a[j] = int32(t.salt[i])
+	}
+
 	return a
 }
 

@@ -23,8 +23,8 @@ func checkedReporter(settings *Settings) {
 			left := (settings.maxGuesses - checked) / perMinute
 
 			t = time.Now()
-			log.Printf("Checked:\t%d/%d\tSpeed per minute:\t%d\tMinutes left:\t%d\tWorkers:\t%d\n",
-				checked, settings.maxGuesses, perMinute, left, runtime.NumGoroutine())
+			log.Printf("Checked:\t%d/%d\tCracked:\t%d\tSpeed per minute:\t%d\tMinutes left:\t%d\tWorkers:\t%d\n",
+				checked, settings.maxGuesses, savedRecordsCounter, perMinute, left, runtime.NumGoroutine())
 
 			lastChecked = checked
 		}
@@ -39,7 +39,7 @@ func worker(settings *Settings) {
 	for {
 		select {
 		case task := <-*settings.tasks:
-			k := sliceToArray(task.hash)
+			k := sliceToArray(&task)
 			_, isCracked := settings.crackedMap.Load(k)
 			if isCracked == false && validator(task.hash, task.word, task.salt) {
 				settings.crackedMap.Store(k, true)

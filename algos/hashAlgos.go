@@ -14,6 +14,7 @@ import (
 	"github.com/matthewhartstonge/argon2"
 	"golang.org/x/crypto/bcrypt"
 	"io"
+	"strings"
 )
 
 var HASHCATALGOS = map[uint]func(string, string, string) bool{
@@ -92,18 +93,21 @@ func BCRYPT(hash, plain, _ string) bool {
 }
 
 func MD5(h, plain, _ string) bool {
+	h = strings.ToLower(h)
 	plainHash := md5.New()
 	io.WriteString(plainHash, plain)
 	return h == fmt.Sprintf("%x", plainHash.Sum(nil))
 }
 
 func MD5PLAINSALT(h, plain, salt string) bool {
+	h = strings.ToLower(h)
 	plainHash := md5.New()
 	io.WriteString(plainHash, plain+salt)
 	return h == fmt.Sprintf("%x", plainHash.Sum(nil))
 }
 
 func MD5SALTPLAIN(h, plain, salt string) bool {
+	h = strings.ToLower(h)
 	plainHash := md5.New()
 	io.WriteString(plainHash, salt+plain)
 	return h == fmt.Sprintf("%x", plainHash.Sum(nil))

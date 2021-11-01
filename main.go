@@ -21,6 +21,10 @@ type Task struct {
 	word string
 }
 
+func (t *Task) toString() string {
+	return fmt.Sprintf("%s:%s:%s", t.hash, t.salt, t.word)
+}
+
 //https://stackoverflow.com/questions/24562942/golang-how-do-i-determine-the-number-of-lines-in-a-file-efficiently/24563853
 func lineCounter(r io.Reader) (uint32, error) {
 	buf := make([]byte, 32*1024)
