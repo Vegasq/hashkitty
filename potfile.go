@@ -29,7 +29,7 @@ func writeToPotfile(settings *Settings, potfile *os.File, task Task) error {
 }
 
 func potfileWriter(settings *Settings) {
-	potfile, err := os.OpenFile(*settings.potfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(777))
+	potfile, err := os.OpenFile(*settings.potfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, os.FileMode(777))
 	if err != nil {
 		panic(err)
 	}
