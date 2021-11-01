@@ -2,11 +2,18 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hellflame/argparse"
+	"github.com/vegasq/hashkitty/algos"
 	"os"
 	"path/filepath"
 	"sync"
 )
+
+func isValidAlgo(hashType uint) bool {
+	val := algos.HASHCATALGOS[hashType]
+	return val != nil
+}
 
 type Settings struct {
 	leftlist   *string
@@ -25,13 +32,12 @@ type Settings struct {
 	progress *sync.WaitGroup
 	writes   *sync.WaitGroup
 
-	cracked      *map[[32]int32]bool
-	crackedMutex *sync.RWMutex
-	checked      *uint32
-	maxGuesses   uint32
+	crackedMap *sync.Map
+	checked    *uint32
+	maxGuesses uint32
 }
 
-func NewSettings() *Settings {
+func NewSettings() (*Settings, error) {
 	conf := argparse.ParserConfig{
 		Usage:                  "",
 		EpiLog:                 "",
@@ -43,18 +49,19 @@ func NewSettings() *Settings {
 		WithHint:               false,
 	}
 	parser := argparse.NewParser("HashKitty", "Hash cracking tool", &conf)
-	parser.String("h", "huh", &argparse.Option{
+
+	parser.String("", "hashkitty", &argparse.Option{
 		Positional: true,
-		Required:   true,
-		Help:       "huh",
+		HideEntry:  true,
 	})
-	leftlist := parser.String("l", "leftlist", &argparse.Option{
+
+	leftlist := parser.String("", "leftlist", &argparse.Option{
 		Positional: true,
 		Required:   true,
 		Help:       "Leftlist file location",
 	})
 
-	wordlist := parser.String("w", "wordlist", &argparse.Option{
+	wordlist := parser.String("", "wordlist", &argparse.Option{
 		Positional: true,
 		Required:   true,
 		Help:       "Wordlist file location",
@@ -83,15 +90,18 @@ func NewSettings() *Settings {
 		Help: "Enable removal of hashes once they are cracked",
 	})
 
-	hexSalt := parser.Flag("hs", "hex-salt", &argparse.Option{
+	hexSalt := parser.Flag("", "hex-salt", &argparse.Option{
 		Help: "Salts provided in hex",
 	})
 
 	err := parser.Parse(os.Args)
 	if err != nil {
-		// In case of error print error and print usage
-		// This can also be done by passing -h or --help flags
 		parser.PrintHelp()
+		return &Settings{}, err
+	}
+
+	if isValidAlgo(uint(*hashType)) == false {
+		return &Settings{}, errors.New(fmt.Sprintf("unknown mode %d", *hashType))
 	}
 
 	if _, err := os.Stat(*potfile); errors.Is(err, os.ErrNotExist) {
@@ -110,12 +120,9 @@ func NewSettings() *Settings {
 	goodTasksChan := make(chan Task)
 	potfileCloser := make(chan bool)
 
-	// Possible collision
-	cracked := map[[32]int32]bool{}
-	crackedMutex := sync.RWMutex{}
-
 	var checked uint32 = 0
 	var maxGuesses uint32 = 0
+
 	s := &Settings{
 		leftlist,
 		wordlist,
@@ -130,11 +137,10 @@ func NewSettings() *Settings {
 		&potfileCloser,
 		&progress,
 		&writes,
-		&cracked,
-		&crackedMutex,
+		&sync.Map{},
 		&checked,
 		maxGuesses,
 	}
 	s.maxGuesses = calculateMaxGuesses(s)
-	return s
+	return s, nil
 }

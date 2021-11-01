@@ -22,7 +22,6 @@ func capitalize(str string, reader *strings.Reader) string {
 	wordReader := strings.NewReader(str)
 	r, _, err := wordReader.ReadRune()
 	if err != nil {
-		fmt.Println("Failed to read rune in capitalize")
 		return str
 	}
 	word := strings.ToUpper(string(r))
@@ -135,11 +134,17 @@ func reflect(str string, reader *strings.Reader) string {
 }
 
 func rotateLeft(str string, reader *strings.Reader) string {
+	if len(str) == 0 {
+		return ""
+	}
 	str += string(str[0])
 	return str[1:]
 }
 
 func rotateRight(str string, reader *strings.Reader) string {
+	if len(str) == 0 {
+		return ""
+	}
 	last := string(str[len(str)-1])
 	return last + str[:len(str)-1]
 }
@@ -156,10 +161,16 @@ func prependChar(str string, reader *strings.Reader) string {
 }
 
 func truncateLeft(str string, reader *strings.Reader) string {
+	if len(str) == 0 {
+		return str
+	}
 	return str[1:]
 }
 
 func truncateRight(str string, reader *strings.Reader) string {
+	if len(str) == 0 {
+		return str
+	}
 	return str[:len(str)-1]
 }
 
@@ -187,6 +198,11 @@ func extractRange(str string, reader *strings.Reader) string {
 	startPos := readNum(reader)
 	totalChars := readNum(reader)
 
+	if len(str) < int(startPos) {
+		return ""
+	} else if len(str) < int(startPos+totalChars) {
+		return str[startPos:]
+	}
 	return str[startPos : startPos+totalChars]
 }
 
@@ -198,6 +214,11 @@ func omitRange(str string, reader *strings.Reader) string {
 		panic("Failed to read rule")
 	}
 	totalChars := ruleNumericSystemToUint(r)
+	if len(str) < int(startPos) {
+		return str
+	} else if len(str) < int(startPos+totalChars) {
+		return str[:startPos]
+	}
 
 	return str[:startPos] + str[startPos+totalChars:]
 }

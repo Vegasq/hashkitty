@@ -8,12 +8,25 @@ import (
 	"time"
 )
 
+var lastChecked = uint32(1)
+
 func CheckedReporter(settings *Settings) {
 	t := time.Now()
 	for {
 		if time.Since(t) > time.Second*5 {
+			checked := *settings.checked
+
+			perMinute := (checked - lastChecked) * 12
+			if perMinute == 0 {
+				perMinute = 1
+			}
+			left := (settings.maxGuesses - checked) / perMinute
+
 			t = time.Now()
-			log.Printf("Checked %d/%d", *settings.checked, settings.maxGuesses)
+			log.Printf("Checked:\t%d/%d\tSpeed per minute:\t%d\tMinutes left:\t%d\tWorkers:\t%d\n",
+				checked, settings.maxGuesses, perMinute, left, runtime.NumGoroutine())
+
+			lastChecked = checked
 		}
 	}
 }
@@ -26,31 +39,27 @@ func Worker(settings *Settings) {
 	for {
 		select {
 		case task := <-*settings.tasks:
-			if validator(task.hash, task.word, task.salt) {
-				log.Printf("OK %s %s\n", task.hash, task.word)
-
-				cracked := *settings.cracked
-				settings.crackedMutex.Lock()
-				cracked[sliceToArray(task.hash)] = true
-				settings.crackedMutex.Unlock()
-
+			k := sliceToArray(task.hash)
+			_, isCracked := settings.crackedMap.Load(k)
+			if isCracked == false && validator(task.hash, task.word, task.salt) {
+				settings.crackedMap.Store(k, true)
 				settings.writes.Add(1)
 				*settings.results <- task
 			}
 
-			settings.crackedMutex.Lock()
 			*settings.checked++
-			settings.crackedMutex.Unlock()
-
 			settings.progress.Done()
 		case <-ctx.Done():
+			log.Println("Closing worker")
 			return
 		}
 	}
 }
 
 func spawnWorkers(settings *Settings) {
+	log.Printf("Routines before workers spawn: %d", runtime.NumGoroutine())
 	for i := runtime.NumCPU() * 10; i != 0; i-- {
 		go Worker(settings)
 	}
+	log.Printf("Routines after workers spawn: %d", runtime.NumGoroutine())
 }

@@ -2,27 +2,18 @@ package main
 
 import (
 	"github.com/vegasq/hashkitty/rules"
-	"log"
 )
 
 func sliceToArray(s string) [32]int32 {
 	// we use last 32 chars to identify the hash
 	var a [32]int32
-	for i, j := 32, 0; i > 0; i, j = i-1, j+1 {
-		a[j] = int32(s[i-1])
+	for i, j := len(s)-1, 0; j != 32; i, j = i-1, j+1 {
+		a[j] = int32(s[i])
 	}
 	return a
 }
 
 func sendTask(settings *Settings, hash LeftlistRecord, word string) {
-	//log.Println("CHECK " + hash.hash + " " + hash.salt + " " + word)
-
-	cracked := *settings.cracked
-	if cracked[sliceToArray(hash.hash)] == true {
-		log.Println("Skipping already known hash")
-		return
-	}
-
 	settings.progress.Add(1)
 	*(settings.tasks) <- Task{
 		hash: hash.hash,

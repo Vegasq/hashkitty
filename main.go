@@ -59,21 +59,29 @@ func calculateMaxGuesses(settings *Settings) uint32 {
 }
 
 func GC() {
+	t := time.Now()
 	for {
-		t := time.Now()
 		if time.Since(t) > time.Second*30 {
+			t = time.Now()
+			log.Println("Garbage collector")
 			debug.FreeOSMemory()
+			log.Println("Garbage collector done")
 		}
 	}
 }
 
 func main() {
-	settings := NewSettings()
+	go GC()
+
+	settings, err := NewSettings()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	spawnWorkers(settings)
 	go potfileWriter(settings)
 	go CheckedReporter(settings)
-	go GC()
 
 	leftlist := NewLeftlist(settings)
 	wordlist := NewWordlist(settings)
@@ -82,7 +90,13 @@ func main() {
 	ruleset := NewRuleset(settings)
 	defer ruleset.Close()
 
-	log.Printf("Start attack mode %d\n", *settings.attackMode)
+	log.Printf(
+		"Cracking leftlist %s with wordlist %s and ruleset %s using mode %d\n",
+		*settings.leftlist,
+		*settings.wordlist,
+		*settings.rules,
+		*settings.attackMode,
+	)
 	if *settings.attackMode == 0 {
 		mode0(settings, leftlist, wordlist, ruleset)
 	} else if *settings.attackMode == 9 {
