@@ -34,8 +34,6 @@ func checkedReporter(settings *Settings) {
 func worker(settings *Settings) {
 	validator := algos.HASHCATALGOS[uint(*settings.hashType)]
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Hour)
-	defer cancel()
 	for {
 		select {
 		case task := <-*settings.tasks:
