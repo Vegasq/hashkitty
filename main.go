@@ -22,7 +22,11 @@ type Task struct {
 }
 
 func (t *Task) toString() string {
-	return fmt.Sprintf("%s:%s:%s", t.hash, t.salt, t.word)
+	if len(t.salt) > 0 {
+		return fmt.Sprintf("%s:%s:%s", t.hash, t.salt, t.word)
+	} else {
+		return fmt.Sprintf("%s:%s", t.hash, t.word)
+	}
 }
 
 //https://stackoverflow.com/questions/24562942/golang-how-do-i-determine-the-number-of-lines-in-a-file-efficiently/24563853
@@ -72,9 +76,7 @@ func GC() {
 	for {
 		if time.Since(t) > time.Second*30 {
 			t = time.Now()
-			log.Println("Garbage collector")
 			debug.FreeOSMemory()
-			log.Println("Garbage collector done")
 		}
 	}
 }

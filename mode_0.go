@@ -4,8 +4,7 @@ import (
 	"github.com/vegasq/hashkitty/rules"
 )
 
-func sliceToArray(t *Task) [64]int32 {
-	// we use last 32 chars to identify the hash
+func taskToHashArray(t *Task) [64]int32 {
 	var a [64]int32
 
 	for i, j := len(t.hash)-1, 0; j < 32 && i >= 0; i, j = i-1, j+1 {

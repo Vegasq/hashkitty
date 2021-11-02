@@ -32,24 +32,18 @@ func checkedReporter(settings *Settings) {
 
 func worker(settings *Settings) {
 	validator := algos.HASHCATALGOS[uint(*settings.hashType)]
-
 	for {
-		select {
-		case task := <-*settings.tasks:
-			k := sliceToArray(&task)
-			_, isCracked := settings.crackedMap.Load(k)
-			if isCracked == false && validator(task.hash, task.word, task.salt) {
-				settings.crackedMap.Store(k, true)
-				settings.writes.Add(1)
-				*settings.results <- task
-			}
-
-			*settings.checked++
-			settings.progress.Done()
-		case <-ctx.Done():
-			log.Println("Closing worker")
-			return
+		task := <-*settings.tasks
+		k := taskToHashArray(&task)
+		_, isCracked := settings.crackedMap.Load(k)
+		if isCracked == false && validator(task.hash, task.word, task.salt) {
+			settings.crackedMap.Store(k, true)
+			settings.writes.Add(1)
+			*settings.results <- task
 		}
+
+		*settings.checked++
+		settings.progress.Done()
 	}
 }
 
