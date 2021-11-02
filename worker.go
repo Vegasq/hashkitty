@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"github.com/vegasq/hashkitty/algos"
 	"log"
 	"runtime"
