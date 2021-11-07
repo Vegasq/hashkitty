@@ -1,3 +1,8 @@
+/*
+Package main
+
+Reimplementation of _some_ of the [HashCat](https://github.com/hashcat/hashcat) features in GO.
+*/
 package main
 
 import (
@@ -14,6 +19,14 @@ type Task struct {
 	hash string
 	salt string
 	word string
+}
+
+func (t *Task) toString() string {
+	if len(t.salt) > 0 {
+		return fmt.Sprintf("%s:%s:%s", t.hash, t.salt, t.word)
+	} else {
+		return fmt.Sprintf("%s:%s", t.hash, t.word)
+	}
 }
 
 //https://stackoverflow.com/questions/24562942/golang-how-do-i-determine-the-number-of-lines-in-a-file-efficiently/24563853
@@ -59,21 +72,27 @@ func calculateMaxGuesses(settings *Settings) uint32 {
 }
 
 func GC() {
+	t := time.Now()
 	for {
-		t := time.Now()
 		if time.Since(t) > time.Second*30 {
+			t = time.Now()
 			debug.FreeOSMemory()
 		}
 	}
 }
 
 func main() {
-	settings := NewSettings()
+	go GC()
+
+	settings, err := NewSettings()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	spawnWorkers(settings)
 	go potfileWriter(settings)
-	go CheckedReporter(settings)
-	go GC()
+	go checkedReporter(settings)
 
 	leftlist := NewLeftlist(settings)
 	wordlist := NewWordlist(settings)
@@ -82,7 +101,13 @@ func main() {
 	ruleset := NewRuleset(settings)
 	defer ruleset.Close()
 
-	log.Printf("Start attack mode %d\n", *settings.attackMode)
+	log.Printf(
+		"Cracking leftlist %s with wordlist %s and ruleset %s using mode %d\n",
+		*settings.leftlist,
+		*settings.wordlist,
+		*settings.rules,
+		*settings.attackMode,
+	)
 	if *settings.attackMode == 0 {
 		mode0(settings, leftlist, wordlist, ruleset)
 	} else if *settings.attackMode == 9 {

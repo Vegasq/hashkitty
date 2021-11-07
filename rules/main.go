@@ -1,3 +1,8 @@
+/*
+Package rules
+
+Library that implements subset of rules from hashcat.
+*/
 package rules
 
 import (
@@ -37,7 +42,9 @@ var simpleRulesMap = map[string]func(string, *strings.Reader) string{
 	"Z": duplicateLast,
 }
 
-//Apply - implements a subset of rules language supported by hashcat
+//Apply - applies rules to the given string
+// Example:
+// 		rules.Apply("abc", "$1") == "abc1"
 func Apply(rule string, word string) string {
 	ruleReader := strings.NewReader(rule)
 	for {
