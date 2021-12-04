@@ -41,6 +41,19 @@ flags:
   --remove                                      Enable removal of hashes once they are cracked
 ```
 
+- [ Outfile Formats ] -
+
+|    | Format     |
+|:---|:---        |
+| 1  | hash[:salt]|
+| 2  | plain      |
+| 3  | hex_plain  |
+
+[comment]: <> (| 4 | crack_pos |)
+[comment]: <> (| 5 | timestamp absolute |)
+[comment]: <> (| 6 | timestamp relative |)
+
+
 ### Supported rules
 
 |        Name         |  Function  |                      Description                      |  Example Rule  |  Input Word  |         Output Word        |  Note  |

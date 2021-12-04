@@ -31,6 +31,9 @@ type Settings struct {
 	maxGuesses   uint32
 }
 
+var OutFile *string
+var OutFileFormat *string
+
 func NewSettings() *Settings {
 	conf := argparse.ParserConfig{
 		Usage:                  "",
@@ -85,6 +88,16 @@ func NewSettings() *Settings {
 
 	hexSalt := parser.Flag("hs", "hex-salt", &argparse.Option{
 		Help: "Salts provided in hex",
+	})
+
+	OutFile = parser.String("of", "outfile", &argparse.Option{
+		Help:    "Define outfile for recovered hash",
+		Default: "",
+	})
+
+	OutFileFormat = parser.String("off", "outfile-format", &argparse.Option{
+		Help:    "Outfile format to use, separated with commas",
+		Default: "1,2",
 	})
 
 	err := parser.Parse(os.Args)
